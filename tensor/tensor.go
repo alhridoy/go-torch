@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"runtime"
 	"sync"
+	"math"
 	"bytes" 
 	"encoding/gob"
 
@@ -891,4 +892,111 @@ func PrintTensor(t *Tensor) {
 		fmt.Printf(", op=%s", t.Operation)
 	}
 	fmt.Println(")")
+}
+
+
+/* Element-wise statistical functions */ 
+
+
+// calculates the sum of a tensor along a given axis.
+// if keepDims is true, the summed axis is preserved with size 1.
+func Sum(t *Tensor, axis int, keepDims bool) *Tensor {
+	shape := t.GetShape()
+	data := t.GetData()
+	var newShape []int
+	var outData []float64
+
+	if axis == 0 {
+		outData = make([]float64, shape[1])
+		for j := 0; j < shape[1]; j++ {
+			sum := 0.0
+			for i := 0; i < shape[0]; i++ {
+				sum += data[i*shape[1]+j]
+			}
+			outData[j] = sum
+		}
+		if keepDims {
+			newShape = []int{1, shape[1]}
+		} else {
+			newShape = []int{shape[1]}
+		}
+	}
+	out, _ := NewTensor(newShape, outData)
+	return out
+}
+
+
+// calculates the mean of a tensor along a given axis.
+func Mean(t *Tensor, axis int, keepDims bool) *Tensor {
+	sum := Sum(t, axis, keepDims)
+	N := float64(t.GetShape()[axis])
+	return sum.MulScalar(1.0 / N)
+}
+
+
+// raises each element of the tensor to the power of the scalar.
+func (t *Tensor) Pow(scalar float64) *Tensor {
+	outData := make([]float64, len(t.data))
+	for i, v := range t.data {
+		outData[i] = math.Pow(v, scalar)
+	}
+	out, _ := NewTensor(t.shape, outData)
+	return out
+}
+
+
+// calculates the variance of a tensor along a given axis.
+func Var(t *Tensor, axis int, keepDims bool) *Tensor {
+	mean := Mean(t, axis, true) 
+	diff := Sub(t, mean)
+	sqDiff := diff.Pow(2)
+	return Mean(sqDiff, axis, keepDims)
+}
+
+
+// adds a scalar value to each element of the tensor.
+func (t *Tensor) AddScalar(scalar float64) *Tensor {
+	outData := make([]float64, len(t.data))
+	for i, v := range t.data {
+		outData[i] = v + scalar
+	}
+	out, _ := NewTensor(t.shape, outData)
+	return out
+}
+
+
+// multiplies each element of the tensor by a scalar value.
+func (t *Tensor) MulScalar(scalar float64) *Tensor {
+	outData := make([]float64, len(t.data))
+	for i, v := range t.data {
+		outData[i] = v * scalar
+	}
+	out, _ := NewTensor(t.shape, outData)
+	return out
+}
+
+
+// subtracts tensor t2 from t1 (element-wise).
+// broadcasting for the case where t1 is a matrix and t2 is a vector (mean).
+func Sub(t1, t2 *Tensor) *Tensor {
+	outData := make([]float64, Numel(t1))
+	d1 := t1.GetData()
+	d2 := t2.GetData()
+
+	s1 := t1.GetShape()
+	s2 := t2.GetShape()
+
+	if IsSameSize(t1, t2) {
+		for i := range d1 {
+			outData[i] = d1[i] - d2[i]
+		}
+	} else if len(s1) == 2 && len(s2) == 2 && s1[0] > 1 && s2[0] == 1 && s1[1] == s2[1] {
+		for i := 0; i < s1[0]; i++ {
+			for j := 0; j < s1[1]; j++ {
+				outData[i*s1[1]+j] = d1[i*s1[1]+j] - d2[j]
+			}
+		}
+	}
+	out, _ := NewTensor(s1, outData)
+	return out
 }

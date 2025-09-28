@@ -2,7 +2,8 @@ package nn
 
 import "go-torch/tensor"
 
-// Sequential is a container for layers arranged in a sequential order.
+
+//a container for layers arranged in a sequential order.
 type Sequential struct {
 	layers []Layer
 }
@@ -15,13 +16,13 @@ func NewSequential() *Sequential {
 }
 
 
-// Add adds a new layer to the sequential model.
+// adds a new layer to the sequential model.
 func (s *Sequential) Add(layer Layer) {
 	s.layers = append(s.layers, layer)
 }
 
 
-// Forward performs the forward pass for the entire sequence of layers.
+// performs the forward pass for the entire sequence of layers.
 func (s *Sequential) Forward(x *tensor.Tensor) (*tensor.Tensor, error) {
 	var err error
 	for _, layer := range s.layers {
@@ -34,7 +35,7 @@ func (s *Sequential) Forward(x *tensor.Tensor) (*tensor.Tensor, error) {
 }
 
 
-// Parameters returns a slice of all parameters from all layers in the model.
+// returns a slice of all parameters from all layers in the model.
 func (s *Sequential) Parameters() []*tensor.Tensor {
 	params := []*tensor.Tensor{}
 	for _, layer := range s.layers {
@@ -43,13 +44,30 @@ func (s *Sequential) Parameters() []*tensor.Tensor {
 	return params
 }
 
-// ZeroGrad calls ZeroGrad on all layers in the model.
+
+// calls ZeroGrad on all layers in the model.
 func (s *Sequential) ZeroGrad() {
 	for _, layer := range s.layers {
 		layer.ZeroGrad()
 	}
 }
 
+
 func (s *Sequential) Layers() []Layer {
 	return s.layers
+}
+
+
+// sets the model and all its layers to training mode.
+func (s *Sequential) Train() {
+	for _, layer := range s.layers {
+		layer.Train()
+	}
+}
+
+// sets the model and all its layers to evaluation mode.
+func (s *Sequential) Eval() {
+	for _, layer := range s.layers {
+		layer.Eval()
+	}
 }

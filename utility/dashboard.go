@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"runtime"
+	"strings"
 	"sync"
 	"time"
 
@@ -26,6 +27,7 @@ type TrainingDashboard struct {
 
 	fullLossData     []float64
 	fullAccuracyData []float64
+	logMessages      []string
 	renderMutex      sync.Mutex
 }
 
@@ -38,6 +40,7 @@ func NewTrainingDashboard(learningRate float64, batchSize int, epochs int) *Trai
 	d := &TrainingDashboard{
 		fullLossData:     []float64{0, 0},
 		fullAccuracyData: []float64{0, 0},
+		logMessages:      make([]string, 0),
 	}
 
 	d.lossPlot = widgets.NewPlot()
@@ -178,7 +181,19 @@ func (d *TrainingDashboard) AddAccuracy(accuracy float64) {
 func (d *TrainingDashboard) Log(message string) {
 	d.renderMutex.Lock()
 	defer d.renderMutex.Unlock()
-	d.logParagraph.Text = message
+
+	// Add a timestamp to the message
+	timestampedMessage := fmt.Sprintf("[%s] %s", time.Now().Format("15:04:05"), message)
+	d.logMessages = append(d.logMessages, timestampedMessage)
+
+	// Keep the log from growing too large (e.g., keep the last 10 messages)
+	const maxLogMessages = 10
+	if len(d.logMessages) > maxLogMessages {
+		d.logMessages = d.logMessages[len(d.logMessages)-maxLogMessages:]
+	}
+
+	// Join the messages and update the widget's text
+	d.logParagraph.Text = strings.Join(d.logMessages, "\n")
 	ui.Render(d.grid)
 }
 

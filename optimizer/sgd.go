@@ -5,99 +5,101 @@ import (
 	"go-torch/tensor"
 )
 
-
-// common method all optimizers must utilize
+// the interface that all optimizers must implement.
 type Optimizer interface {
 	Step() error
 	ZeroGrad()
-	Parameters() []*tensor.Tensor // return the parameters managed by the optimizer
 }
 
 
-
-// SGD : Stochastic Gradient Descent optimizer.
+// implements the Stochastic Gradient Descent optimizer, with optional momentum.
 type SGD struct {
 	learningRate float64
-	parameters   []*tensor.Tensor // tensors whose gradients will be updated
+	momentum     float64
+	parameters   []*tensor.Tensor
+	velocities   map[*tensor.Tensor][]float64 // Stores momentum velocities
 }
 
 
-
-// creates a new SGD and recieves list of parameters (tensors with RequiresGrad=true) and a learning rate.
-func NewSGD(parameters []*tensor.Tensor, learningRate float64) (*SGD, error) {
+// creates a new SGD optimizer.
+// for standard SGD, set momentum to 0.0. A common value for momentum is 0.9.
+func NewSGD(parameters []*tensor.Tensor, learningRate float64, momentum float64) (*SGD, error) {
 	if learningRate <= 0 {
 		return nil, fmt.Errorf("optimizer: learning rate must be positive, got %f", learningRate)
+	}
+	if momentum < 0.0 {
+		return nil, fmt.Errorf("optimizer: momentum must be non-negative, got %f", momentum)
 	}
 	if len(parameters) == 0 {
 		return nil, fmt.Errorf("optimizer: created with empty parameters list")
 	}
 
-
-	// filter out params that don't require grad - shouldn't happen if usage is correct, but safe
 	validParams := []*tensor.Tensor{}
 	for _, p := range parameters {
 		if p != nil && p.RequiresGrad {
 			validParams = append(validParams, p)
-		} else if p != nil {
-			// fmt.Printf("Warning: Optimizer skipping parameter (op='%s', shape=%v) as it does not require grad.\n", p.Operation, p.GetShape())
 		}
 	}
-
 	if len(validParams) == 0 {
 		return nil, fmt.Errorf("optimizer: no parameters requiring gradients provided")
 	}
 
+	// initialize velocity buffers only if momentum is being used.
+	velocities := make(map[*tensor.Tensor][]float64)
+	if momentum > 0.0 {
+		for _, p := range validParams {
+			velocities[p] = make([]float64, tensor.Numel(p))
+		}
+	}
+
 	return &SGD{
 		learningRate: learningRate,
+		momentum:     momentum,
 		parameters:   validParams,
+		velocities:   velocities,
 	}, nil
 }
 
 
-
-// step updates the parameters based on their gradients using the SGD rule:
-// parameter = parameter - learning_rate * gradient
+// updates the parameters based on their gradients using the SGD rule.
 func (s *SGD) Step() error {
 	for _, p := range s.parameters {
 		if p.Grad == nil {
-			// this is often okay if a parameter didn't participate in the forward pass
-			// leading to the loss, but it could also indicate an issue. Warn and skip.
 			continue
 		}
 
 		if !tensor.IsSameSize(p, p.Grad) {
-			return fmt.Errorf("optimizer: gradient size mismatch for parameter (op='%s', shape=%v): grad shape %v, parameter shape %v",
-				p.Operation, p.GetShape(), p.Grad.GetShape(), p.GetShape())
+			return fmt.Errorf("optimizer: gradient size mismatch for parameter shape %v: grad shape %v",
+				p.GetShape(), p.Grad.GetShape())
 		}
 
-		// apply SGD element-wise
 		paramData := p.GetData()
 		gradData := p.Grad.GetData()
 
-		if len(paramData) != len(gradData) {
-			return fmt.Errorf("optimizer: internal error: data length mismatch for parameter (op='%s', shape=%v) and grad (shape=%v)",
-				p.Operation, p.GetShape(), p.Grad.GetShape())
-		}
-
-		for i := range paramData {
-			paramData[i] -= s.learningRate * gradData[i]
+		if s.momentum > 0.0 {
+			v, ok := s.velocities[p]
+			if !ok {
+				return fmt.Errorf("optimizer: velocity buffer not found for parameter; this should not happen")
+			}
+			for i := range paramData {
+				// v = momentum * v + grad
+				v[i] = s.momentum*v[i] + gradData[i]
+				// p = p - lr * v
+				paramData[i] -= s.learningRate * v[i]
+			}
+		} else {
+			for i := range paramData {
+				paramData[i] -= s.learningRate * gradData[i]
+			}
 		}
 	}
-	return nil 
+	return nil
 }
 
 
-
-// sets all params managed by this to zero
+// sets the gradients of all managed parameters to zero.
 func (s *SGD) ZeroGrad() {
 	for _, p := range s.parameters {
 		p.ZeroGrad()
 	}
-}
-
-
-
-// returns the slice of params managed by this optimizer 
-func (s *SGD) Parameters() []*tensor.Tensor {
-    return s.parameters
 }

@@ -124,3 +124,6 @@ func (l *Linear) ZeroGrad() {
 func (l *Linear) Name() string {
 	return "Linear"
 }
+
+func (l *Linear) Train() {}
+func (l *Linear) Eval()  {}

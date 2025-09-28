@@ -9,6 +9,8 @@ type Layer interface {
 	Parameters() []*tensor.Tensor
 	ZeroGrad()
 	Name() string
+	Train()
+	Eval()
 }
 
 // --- Activation Layers ---
@@ -22,3 +24,6 @@ func (r *RELUActivation) Name() string { return "ReLU" }
 func NewRELU() *RELUActivation {
 	return &RELUActivation{}
 }
+
+func (r *RELUActivation) Train() {}
+func (r *RELUActivation) Eval()  {}

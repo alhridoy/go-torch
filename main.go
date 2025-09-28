@@ -228,7 +228,7 @@ func optimizerDemo() {
 	allParams = append(allParams, layer2.Parameters()...)
 
 	learningRate := 0.1
-	sgdOptimizer, err := optimizer.NewSGD(allParams, learningRate)
+	sgdOptimizer, err := optimizer.NewSGD(allParams, learningRate, 0.0)
 	if err != nil { log.Fatalf("Error creating SGD optimizer: %v", err) }
 	
 	fmt.Println("\n--- Before Optimization Step ---")

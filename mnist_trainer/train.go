@@ -245,7 +245,7 @@ func main() {
 	model, err := NewSimpleCNN(numClasses)
 	if err != nil { log.Fatalf("Failed to create model: %v", err) }
 
-	optimizer, err := optimizer.NewSGD(model.Parameters(), learningRate)
+	optimizer, err := optimizer.NewSGD(model.Parameters(), learningRate, 0.0)
 	if err != nil { log.Fatalf("Failed to create optimizer: %v", err) }
 
 

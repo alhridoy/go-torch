@@ -27,3 +27,6 @@ func (f *Flatten) ZeroGrad() {}
 func (f *Flatten) Name() string {
 	return "Flatten"
 }
+
+func (f *Flatten) Train() {}
+func (f *Flatten) Eval()  {}

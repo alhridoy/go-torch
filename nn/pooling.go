@@ -114,3 +114,6 @@ func (p *MaxPooling2D) ZeroGrad() {}
 func (p *MaxPooling2D) Name() string {
 	return "MaxPooling2D"
 }
+
+func (p *MaxPooling2D) Train() {}
+func (p *MaxPooling2D) Eval()  {}

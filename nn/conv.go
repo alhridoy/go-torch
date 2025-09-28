@@ -122,3 +122,6 @@ func (c *Conv2D) ZeroGrad() {
 func (c *Conv2D) Name() string {
 	return "Conv2D"
 }
+
+func (c *Conv2D) Train() {}
+func (c *Conv2D) Eval()  {}
